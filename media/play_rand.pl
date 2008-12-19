@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 #
 # Plays a random episode of a show. Defaults to chosing
 # from all episodes ending in .avi in the current directory, 
@@ -7,10 +7,13 @@
 # Written by Mike Kelly
 #
 # $Id: play_rand.pl,v 1.8 2005/11/20 18:46:02 mike Exp mike $
-our $VERSION = '$Revision: 1.8 $';
+our $VERSION = '$Revision: 1.9 $';
 
 use strict;
+use warnings;
+
 use Getopt::Std;
+use List::Util qw(shuffle);
 
 # define some defaults
 our $PLAYER = 'mplayer';
@@ -25,32 +28,21 @@ sub HELP_MESSAGE {
     print <<EOF;
 play_rand.pl takes the following arguments:
 
-    -h		Shows this help message.
-    -p pattern	The pattern to match for episodes. A Perl regexp.
-    -d dir	The directory to work in.
-    -n num	The number of episodes to play.
+    -h          Shows this help message.
+    -p pattern  The pattern to match for episodes. A Perl regexp.
+    -d dir      The directory to work in.
+    -n num      The number of episodes to play.
 
-    -P player	The command to use as the "player". Defaults to: 
-		  $PLAYER
-    -A args	The arguments to the player. Defaults to:
-		  $PLAYER_ARGS
+    -P player   The command to use as the "player". Defaults to: 
+                  $PLAYER
+    -A args     The arguments to the player. Defaults to:
+                  $PLAYER_ARGS
 
-    -v		Turns on verbose output.
-    -q		Makes things totally silent.
+    -v          Turns on verbose output.
+    -q          Makes things totally silent.
 EOF
 
     exit;
-}
-
-# fisher_yates_shuffle( \@array ) : generate a random permutation
-# of @array in place
-sub fisher_yates_shuffle (@) {
-    my $array = shift;
-    for (my $i = @$array; --$i && $i>=0; ) {
-        my $j = int rand ($i+1);
-        next if $i == $j;
-        @$array[$i,$j] = @$array[$j,$i];
-    }
 }
 
 # handle our arguments, and load default values.
@@ -88,12 +80,12 @@ my @files = ( );
 
 foreach (@files) {
     if($opt{"v"}) {
-	print "DBG: $_\n";
+        print "DBG: $_\n";
     }
 }
 
 # now, randomize the array
-fisher_yates_shuffle(\@files);
+@files = shuffle(@files);
 
 # now, truncate the list to be the first $num entries
 my @finalFiles = ( );
@@ -105,7 +97,7 @@ for (my $i=0; ($i<$num) && ($i <= $#files); $i++) {
 if(! defined $opt{"q"}) {
     print "Now playing the following:\n";
     foreach (@finalFiles) {
-	print "  $_\n";
+        print "  $_\n";
     }
 }
 
