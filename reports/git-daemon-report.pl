@@ -3,6 +3,7 @@
 use warnings;
 use strict;
 
+use List::Util qw(sum);
 use Socket;
 use Sys::Hostname;
 
@@ -44,7 +45,7 @@ sub report {
     my ($results) = @_;
     foreach my $repo (sort keys %$results) {
         my $ips = $results->{$repo};
-        printf "%s:\n", $repo;
+        printf "%s (%d):\n", $repo, sum(values %$ips);
         foreach my $ip (sort {$ips->{$b} <=> $ips->{$a}} keys %$ips) {
             my $host = _resolve_ip($ip);
             printf "%4d: %s\n", $ips->{$ip}, $host;
