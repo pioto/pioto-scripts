@@ -19,15 +19,15 @@ foreach (@shortlog) {
 
 my (@data, @labels, $c);
 foreach my $l (sort {$r{$b} <=> $r{$a}} keys %r) {
-    if ($c++ > 10) {
-        $data[11] += $r{$l};
-        $labels[11] = "Other ($data[11])";
+    if ($c++ > 9) {
+        $data[10] += $r{$l};
+        $labels[10] = "Other ($data[10])";
         next;
     }
     push @data, ($r{$l} / $total * 100);
     push @labels, "$l ($r{$l})";
 }
-$data[11] = $data[11] / $total * 100;
+$data[10] = $data[10] / $total * 100;
 
 @data = grep { defined $_ } @data;
 @labels = grep { defined $_ } @labels;
