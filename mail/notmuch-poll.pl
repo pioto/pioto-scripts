@@ -64,6 +64,7 @@ sub tag_by_headers {
     my ($message_id, $message, $raw_message) = @_;
 
     my $parser = MIME::Parser->new();
+    $parser->output_to_core(1);
     my $entity = $parser->parse_data($raw_message);
     my $head = $entity->head();
     $head->unfold();
