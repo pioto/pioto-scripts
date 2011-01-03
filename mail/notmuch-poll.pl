@@ -6,8 +6,8 @@ use strict;
 use JSON;
 use MIME::Parser;
 use IO::CaptureOutput qw(qxx);
+use File::Spec;
 
-my $MAILDIR = '/home/pioto/.maildir';
 my $NEW_QUERY = 'tag:new';
 
 my %HEADER_TAGS = (
@@ -41,6 +41,13 @@ my %MAILDIR_FLAG_TAGS = (
     'D' => ['+draft'], # draft
     'F' => ['+flagged'], # flagged
 );
+
+chomp(my $MAILDIR = qxx('notmuch', 'config', 'get', 'database.path'));
+
+my $MAILDIR_FORMAT = 'offlineimap';
+if (-f File::Spec->catfile($MAILDIR, 'dovecot.index')) {
+    $MAILDIR_FORMAT = 'dovecot';
+}
 
 main(@ARGV);
 
@@ -101,7 +108,7 @@ sub tag_by_folder {
 
     my ($folder) = $message->{filename} =~ m#^$MAILDIR(?:/([^/]+))?/(?:cur|new)/[^/]+$#;
     $folder = '' unless defined $folder;
-    $folder = "INBOX$folder";
+    $folder = "INBOX$folder" if $MAILDIR_FORMAT eq 'dovecot';
     my $folder_tags = $FOLDER_TAGS{$folder};
     if ($folder_tags) {
         message_tag($message_id, @$folder_tags);
