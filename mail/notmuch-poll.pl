@@ -12,7 +12,10 @@ my $NEW_QUERY = 'tag:new';
 
 my %HEADER_TAGS = (
     'X-Spam-Flag' => [ {regex => qr/^YES$/, tags => ['+spam']} ],
-    'X-Bogosity' => [ {regex => qr/^Spam,/, tags => ['+spam', '+bogofilter']} ],
+    'X-Bogosity' => [
+        {regex => qr/^Spam,/, tags => ['+spam', '+bogofilter']},
+        {regex => qr/^Unsure,/, tags => ['+unsure-bogofilter']},
+    ],
     'List-Id' => [
         {regex => qr//, tags => ['+list']},
         {regex => qr/exherbo-commits\.lists\.exherbo\.org/, tags => ['+exherbo-commits']},
