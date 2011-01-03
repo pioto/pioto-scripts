@@ -5,6 +5,7 @@ use strict;
 
 use JSON;
 use MIME::Parser;
+use IO::CaptureOutput qw(qxx);
 
 my $MAILDIR = '/home/pioto/.maildir';
 my $NEW_QUERY = 'tag:new';
@@ -46,14 +47,14 @@ sub main {
     # check for new messages. they'll be tagged to match the $NEW_QUERY
     system 'notmuch', 'new';
 
-    chomp(my $new_count = `notmuch count $NEW_QUERY`);
+    chomp(my $new_count = qxx('notmuch', 'count', $NEW_QUERY));
     print "Parsing $new_count new messages...\n";
     exit 0 unless $new_count; # notmuch search gives invalid JSON if there are no results...
-    my $new_messages = from_json(`notmuch search --format=json --output=messages $NEW_QUERY`);
+    my $new_messages = decode_json(qxx('notmuch', 'search', '--format=json', '--output=messages', $NEW_QUERY));
 
     foreach my $message_id (@$new_messages) {
-        my $message = from_json(`notmuch show --format=json id:$message_id`)->[0][0][0];
-        my $raw_message = `notmuch show --format=raw id:$message_id`;
+        my $message = decode_json(qxx('notmuch', 'show', '--format=json', "id:$message_id"))->[0][0][0];
+        my $raw_message = qxx('notmuch', 'show', '--format=raw', "id:$message_id");
 
         handle_message($message_id, $message, $raw_message);
     }
