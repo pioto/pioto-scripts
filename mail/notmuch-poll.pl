@@ -28,6 +28,15 @@ my %HEADER_TAGS = (
 my %FOLDER_TAGS = (
     'INBOX' => ['+inbox'],
 );
+my %MAILDIR_FLAG_TAGS = (
+    '!DEFAULT' => ['+unread'],
+    'P' => ['+forwarded'], # passed
+    'R' => ['+replied'], # replied
+    'S' => ['-unread'], # seen
+    'T' => ['+trash'], # trashed
+    'D' => ['+draft'], # draft
+    'F' => ['+flagged'], # flagged
+);
 
 main(@ARGV);
 
@@ -56,6 +65,8 @@ sub handle_message {
     tag_by_headers($message_id, $message, $raw_message);
 
     tag_by_folder($message_id, $message);
+
+    tag_by_maildir_flag($message_id, $message);
 
     message_tag($message_id, '-new');
 }
@@ -90,6 +101,22 @@ sub tag_by_folder {
     my $folder_tags = $FOLDER_TAGS{$folder};
     if ($folder_tags) {
         message_tag($message_id, @$folder_tags);
+    }
+}
+
+sub tag_by_maildir_flag {
+    my ($message_id, $message) = @_;
+
+    my ($md_tags) = $message->{filename} =~ /:2,([a-zA-Z]+)/
+        or return;
+    my @md_tags = split //, $md_tags;
+    if (my $def_maildir_tags = $MAILDIR_FLAG_TAGS{'!DEFAULT'}) {
+        message_tag($message_id, @$def_maildir_tags);
+    }
+    foreach my $md_tag (@md_tags) {
+        if (my $maildir_tags = $MAILDIR_FLAG_TAGS{$md_tag}) {
+            message_tag($message_id, @$maildir_tags);
+        }
     }
 }
 
