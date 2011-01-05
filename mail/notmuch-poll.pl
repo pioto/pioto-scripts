@@ -118,12 +118,12 @@ sub tag_by_folder {
 sub tag_by_maildir_flag {
     my ($message_id, $message) = @_;
 
-    my ($md_tags) = $message->{filename} =~ /:2,([a-zA-Z]+)/
-        or return;
-    my @md_tags = split //, $md_tags;
     if (my $def_maildir_tags = $MAILDIR_FLAG_TAGS{'!DEFAULT'}) {
         message_tag($message_id, @$def_maildir_tags);
     }
+    my ($md_tags) = $message->{filename} =~ /:2,([a-zA-Z]+)/
+        or return;
+    my @md_tags = split //, $md_tags;
     foreach my $md_tag (@md_tags) {
         if (my $maildir_tags = $MAILDIR_FLAG_TAGS{$md_tag}) {
             message_tag($message_id, @$maildir_tags);
