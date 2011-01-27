@@ -34,10 +34,11 @@ $data[10] = $data[10] / $total * 100;
 
 my $uri = URI->new('http://chart.apis.google.com/chart');
 
-my $repo_url = $repo->config('remote.origin.url') || $repo->repo_path();
 my @branches = $repo->command('branch');
 my ($branch) = grep {/^\*/} @branches;
 $branch =~ s/^\*\s*// if $branch;
+my $remote = $repo->config("branch.$branch.remote");
+my $repo_url = $repo->config("remote.$remote.url") || $repo->repo_path();
 $repo_url .= " on $branch" if $branch && $branch ne 'master';
 
 $uri->query_param('chtt', "Top 10 Authors for $repo_url"); # chart title
