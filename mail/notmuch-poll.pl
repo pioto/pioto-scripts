@@ -3,10 +3,10 @@
 use warnings;
 use strict;
 
+use File::Spec;
+use IO::CaptureOutput qw(qxx);
 use JSON;
 use MIME::Parser;
-use IO::CaptureOutput qw(qxx);
-use File::Spec;
 
 my $NEW_QUERY = 'tag:new';
 
