@@ -3,6 +3,7 @@
 use warnings;
 use strict;
 
+use Fcntl qw(:flock);
 use File::Spec;
 use IO::CaptureOutput qw(qxx);
 use JSON;
@@ -41,6 +42,15 @@ my %MAILDIR_FLAG_TAGS = (
     'D' => ['+draft'], # draft
     'F' => ['+flagged'], # flagged
 );
+
+my $HOME = $ENV{HOME} || (getpwuid($>))[7]
+    or die "Could not find HOME!";
+my $LOCKFILE = File::Spec->catfile($HOME, '.notmuch-poll.lock');
+
+open my $LOCK, '>', $LOCKFILE
+    or die "Failed to open $LOCKFILE: $!";
+flock $LOCK, LOCK_EX | LOCK_NB
+    or die "Failed to lock $LOCKFILE: $!";
 
 chomp(my $MAILDIR = qxx('notmuch', 'config', 'get', 'database.path'));
 
