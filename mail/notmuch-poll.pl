@@ -62,12 +62,24 @@ sub main {
     exit 0 unless $new_count; # notmuch search gives invalid JSON if there are no results...
     my $new_messages = decode_json(qxx('notmuch', 'search', '--format=json', '--output=messages', $NEW_QUERY));
 
-    foreach my $message_id (@$new_messages) {
-        my $message = decode_json(qxx('notmuch', 'show', '--format=json', "id:$message_id"))->[0][0][0];
-        my $raw_message = qxx('notmuch', 'show', '--format=raw', "id:$message_id");
+    local $| = 1;
 
-        handle_message($message_id, $message, $raw_message);
+    my $i=0;
+    foreach my $message_id (@$new_messages) {
+        $i++;
+        status_message("$i of $new_count...");
+        eval {
+            my $message = decode_json(qxx('notmuch', 'show', '--format=json', "id:$message_id"))->[0][0][0];
+            my $raw_message = qxx('notmuch', 'show', '--format=raw', "id:$message_id");
+
+            handle_message($message_id, $message, $raw_message);
+        };
+        if ($@) {
+            warn "Error handling id:$message_id: $@\n";
+        }
     }
+    status_message("$i of $new_count...");
+    print " Done.\n";
 }
 
 sub handle_message {
@@ -135,5 +147,14 @@ sub message_tag {
     my ($message_id, @tags) = @_;
 
     system 'notmuch', 'tag', @tags, '--', "id:$message_id";
+    if ($?) {
+        die "Failed to tag message $message_id with: ".join(', ', @tags);
+    }
+}
+
+sub status_message {
+    my ($msg) = @_;
+
+    print "\033[0E\033[K$msg";
 }
 
