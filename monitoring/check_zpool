@@ -1,0 +1,49 @@
+#!/usr/bin/env perl
+
+use warnings;
+use strict;
+
+use Nagios::Plugin;
+
+my $WARNING = '90%';
+my $CRITICAL = '98%';
+
+my $np = Nagios::Plugin->new(
+    usage => "Usage: %s [ -v|--verbose ] [-t <timeout>] ",
+);
+
+$np->getopts;
+
+foreach (`zpool list -H`) {
+    chomp;
+    my ($name, $size, $used, $avail, $cap, $health, $altroot) = split /\t/;
+    my ($size_v, $size_u) = $size =~ /^(\d+)(\D+)$/;
+    my ($used_v, $used_u) = $used =~ /^(\d+)(\D+)$/;
+    my ($avail_v, $avail_u) = $avail =~ /^(\d+)(\D+)$/;
+    #use YAML; warn Dump({
+    #        name => $name,
+    #        size => $size, size_v => $size_v, size_u => $size_u,
+    #        used => $used, used_v => $used_v, used_u => $used_u,
+    #        avail => $avail, avail_v => $avail_v, avail_u => $avail_u,
+    #        cap => $cap,
+    #        health => $health,
+    #        altroot => $altroot,
+    #    });
+    $np->add_perfdata(
+        label => $name,
+        value => $used_v,
+        uom => $used_u,
+    );
+    if ($health eq 'ONLINE') {
+        $np->add_message(OK, "$name $health");
+    } elsif ($health eq 'DEGRADED') {
+        $np->add_message(WARNING, "$name $health");
+    } elsif ($health eq 'FAULTED') {
+        $np->add_message(CRITICAL, "$name $health");
+    } else {
+        $np->add_message(UNKNOWN, "$name $health");
+    }
+}
+
+$np->nagios_exit($np->check_messages());
+
