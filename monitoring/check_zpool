@@ -9,14 +9,20 @@ my $WARNING = '90%';
 my $CRITICAL = '98%';
 
 my $np = Nagios::Plugin->new(
-    usage => "Usage: %s [ -v|--verbose ] [-t <timeout>] ",
+    usage => "Usage: %s [ -v|--verbose ] [-t <timeout>] <pool>",
 );
 
 $np->getopts;
 
+my $pool = shift
+    or $np->nagios_die("You must specify a pool to monitor");
+
+my $found;
 foreach (`zpool list -H`) {
     chomp;
     my ($name, $size, $used, $avail, $cap, $health, $altroot) = split /\t/;
+    next unless $name eq $pool;
+    $found++;
     my ($size_v, $size_u) = $size =~ /^(\d+)(\D+)$/;
     my ($used_v, $used_u) = $used =~ /^(\d+)(\D+)$/;
     my ($avail_v, $avail_u) = $avail =~ /^(\d+)(\D+)$/;
@@ -44,6 +50,8 @@ foreach (`zpool list -H`) {
         $np->add_message(UNKNOWN, "$name $health");
     }
 }
+$found
+    or $np->nagios_die("Did not find pool $pool");
 
 $np->nagios_exit($np->check_messages());
 
