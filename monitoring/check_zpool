@@ -18,14 +18,14 @@ my $pool = shift
     or $np->nagios_die("You must specify a pool to monitor");
 
 my $found;
-foreach (`zpool list -H`) {
+foreach (`zpool list -H -o name,size,used,avail,cap,health`) {
     chomp;
-    my ($name, $size, $used, $avail, $cap, $health, $altroot) = split /\t/;
+    my ($name, $size, $used, $avail, $cap, $health) = split /\t/;
     next unless $name eq $pool;
     $found++;
-    my ($size_v, $size_u) = $size =~ /^(\d+)(\D+)$/;
-    my ($used_v, $used_u) = $used =~ /^(\d+)(\D+)$/;
-    my ($avail_v, $avail_u) = $avail =~ /^(\d+)(\D+)$/;
+    my ($size_v, $size_u) = $size =~ /^(\d+(?:\.\d+)?)(\D+)$/;
+    my ($used_v, $used_u) = $used =~ /^(\d+(?:\.\d+)?)(\D+)$/;
+    my ($avail_v, $avail_u) = $avail =~ /^(\d+(?:\.\d+)?)(\D+)$/;
     #use YAML; warn Dump({
     #        name => $name,
     #        size => $size, size_v => $size_v, size_u => $size_u,
@@ -33,7 +33,6 @@ foreach (`zpool list -H`) {
     #        avail => $avail, avail_v => $avail_v, avail_u => $avail_u,
     #        cap => $cap,
     #        health => $health,
-    #        altroot => $altroot,
     #    });
     $np->add_perfdata(
         label => $name,
