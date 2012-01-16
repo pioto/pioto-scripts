@@ -18,7 +18,7 @@ my $pool = shift
     or $np->nagios_die("You must specify a pool to monitor");
 
 my $found;
-foreach (`zpool list -H -o name,size,used,avail,cap,health`) {
+foreach (`zpool list -H -o name,size,alloc,free,cap,health`) {
     chomp;
     my ($name, $size, $used, $avail, $cap, $health) = split /\t/;
     next unless $name eq $pool;
