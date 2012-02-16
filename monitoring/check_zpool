@@ -34,11 +34,19 @@ foreach (`zpool list -H -o name,size,alloc,free,cap,health`) {
     #        cap => $cap,
     #        health => $health,
     #    });
-    $np->add_perfdata(
+    my %perfargs = (
         label => $name,
         value => $used_v,
         uom => $used_u,
     );
+    if ($used_u ne $avail_u) {
+        warn "alloc and free units not the same!";
+    } else {
+        $perfargs{min} = 0;
+        $perfargs{max} = $avail_v;
+    }
+    $used_u .= 'B' unless $used_u =~ /B$/;
+    $np->add_perfdata(%perfargs);
     if ($health eq 'ONLINE') {
         $np->add_message(OK, "$name $health");
     } elsif ($health eq 'DEGRADED') {
