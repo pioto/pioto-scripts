@@ -39,11 +39,11 @@ foreach (`zpool list -H -o name,size,alloc,free,cap,health`) {
         value => $used_v,
         uom => $used_u,
     );
-    if ($used_u ne $avail_u) {
+    if ($used_u ne $size_u) {
         warn "alloc and free units not the same!";
     } else {
         $perfargs{min} = 0;
-        $perfargs{max} = $avail_v;
+        $perfargs{max} = $size_v;
     }
     $used_u .= 'B' unless $used_u =~ /B$/;
     $np->add_perfdata(%perfargs);
