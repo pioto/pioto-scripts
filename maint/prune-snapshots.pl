@@ -2,6 +2,7 @@
 use warnings;
 use strict;
 
+use DateTime::Format::Strptime;
 use List::Util qw(max);
 use POSIX qw(:sys_wait_h); # for WEXITSTATUS
 use YAML;
@@ -9,12 +10,14 @@ use YAML;
 use constant ZFS => '/sbin/zfs';
 
 my %DEFAULTS = (
+    yearly => undef, # keep all 'yearly'
     monthly => undef, # keep all 'monthly'
     weekly => 4, # keep the last 4 weeks
     daily => 6, # keep the last 6 day's
     hourly => 24, # keep the last 24 hours
 );
 
+my $DEBUG = 0;
 my $verbose = -t;
 
 my %zfs;
@@ -25,7 +28,7 @@ while (defined(my $line = <$props>)) {
     chomp $line;
     @n{qw(name property value source)} = split /\t/, $line;
     $zfs{$n{name}}{$n{property}} = $n{value};
-    if ($n{property} eq 'creation') {
+    if ($DEBUG && $n{property} eq 'creation') {
         $zfs{$n{name}}{creation_human} = ''.localtime($n{value});
     }
 }
@@ -36,33 +39,64 @@ unless (close $props) {
     die "Failed to get zfs properties: ".WEXITSTATUS($?);
 }
 
+my $dt_fmt = DateTime::Format::Strptime->new(
+    pattern => '%FT%T',
+    time_zone => 'local',
+);
+
 my %datasets;
 while (my ($name, $props) = each %zfs) {
     if ($props->{type} =~ /^(?:filesystem|volume)$/) {
         $datasets{$name} = {%{$datasets{$name}||{}}, %$props};
     } elsif ($props->{type} eq 'snapshot') {
         my ($ds_name, $snapshot_name) = split /[@]/, $name, 2;
-        $props->{snapshot_type} = snapshot_type($snapshot_name, $props);
+        my $snapdate = $snapshot_name;
+        $snapdate =~ s/-\wly$//;
+        $props->{snapshot_date} = $dt_fmt->parse_datetime($snapdate);
         $datasets{$ds_name}{snapshots}{$snapshot_name} = $props;
     } else {
         warn "Unknown dataset type '$props->{type}' for $name";
     }
 }
 
-#print Dump(\%datasets);
+#print Dump(\%datasets) if $DEBUG;
 
 my %snapshots_by_type;
 while (my ($ds_name, $ds_props) = each %datasets) {
-    while (my ($ss_name, $ss_props) = each %{$ds_props->{snapshots}}) {
-        my $t = $ss_props->{snapshot_type} || 'UNKNOWN';
-        push @{$snapshots_by_type{$ds_name}{$t}}, $ss_name;
+    my %seen;
+    my $snapshots = $ds_props->{snapshots};
+    foreach my $ss_name (sort {$snapshots->{$a}{snapshot_date} <=> $snapshots->{$b}{snapshot_date}} grep {$snapshots->{$_}{snapshot_date}} keys %$snapshots) {
+        my $ss_props = $ds_props->{snapshots}{$ss_name};
+        my $ss_date = $ss_props->{snapshot_date};
+        my $ss_type;
+        if ($seen{year}{$ss_date->year}) {
+            if ($seen{month}{$ss_date->year}{$ss_date->month}) {
+                if ($seen{week}{$ss_date->week_year}{$ss_date->week_number}) {
+                    if ($seen{day}{$ss_date->ymd}) {
+                        $ss_type = 'hourly';
+                    } else {
+                        $ss_type = 'daily';
+                    }
+                } else {
+                    $ss_type = 'weekly';
+                }
+            } else {
+                $ss_type = 'monthly';
+            }
+        } else {
+            $ss_type = 'yearly';
+        }
+        $seen{year}{$ss_date->year}++;
+        $seen{month}{$ss_date->year}{$ss_date->month}++;
+        $seen{week}{$ss_date->week_year}{$ss_date->week_number}++;
+        $seen{day}{$ss_date->ymd}++;
+
+        push @{$snapshots_by_type{$ds_name}{$ss_type}}, $ss_name;
     }
-    while (my ($ss_type, $ss_names) = each %{$snapshots_by_type{$ds_name}}) {
-        $snapshots_by_type{$ds_name}{$ss_type} = [sort @$ss_names];
-    }
+    @{$snapshots_by_type{$ds_name}{UNKNOWN}} = grep {!$snapshots->{$_}{snapshot_date}} keys %$snapshots;
 }
 
-#print Dump(\%snapshots_by_type);
+print Dump(\%snapshots_by_type) if $DEBUG;
 
 while (my ($ds_name, $ss_types) = each %snapshots_by_type) {
     while (my ($ss_type, $ss_names) = each %$ss_types) {
@@ -72,8 +106,10 @@ while (my ($ds_name, $ss_types) = each %snapshots_by_type) {
                 my $name = shift @$ss_names;
                 my @cmd = (ZFS, "destroy", "$ds_name\@$name");
                 print "# @cmd\n" if $verbose;
-                system(@cmd)
-                    and die "@cmd failed: $? $!";
+                unless ($DEBUG) {
+                    system(@cmd)
+                        and die "@cmd failed: $? $!";
+                }
             }
         }
     }
@@ -81,12 +117,4 @@ while (my ($ds_name, $ss_types) = each %snapshots_by_type) {
 
 exit;
 
-sub snapshot_type {
-    my ($snapshot_name, $props) = @_;
-
-    # ready for the year 10000 :p
-    my ($type) = $snapshot_name =~
-    /^\d{4,}-\d\d-\d\dT\d\d:\d\d:\d\d-((?:month|week|dai|hour)ly)$/;
-    return $type;
-}
 
