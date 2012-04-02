@@ -23,7 +23,16 @@ my $DEBUG = 0;
 my $verbose = -t;
 
 my %zfs;
-open my $props, '-|', ZFS, 'get', '-Hp', 'all'
+my $root_ds = shift;
+my @zfs_get_cmd = (ZFS, 'get', '-Hp');
+if ($root_ds) {
+    push @zfs_get_cmd, '-r';
+}
+push @zfs_get_cmd, 'all';
+if ($root_ds) {
+    push @zfs_get_cmd, $root_ds;
+}
+open my $props, '-|', @zfs_get_cmd
     or die "Failed to fork `zfs`: $!";
 while (defined(my $line = <$props>)) {
     my %n;
