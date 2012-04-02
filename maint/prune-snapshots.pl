@@ -17,6 +17,8 @@ my %DEFAULTS = (
     hourly => 24, # keep the last 24 hours
 );
 
+my $SNAPSHOT_TYPE_PROP = 'org.pioto:snapshot_type';
+
 my $DEBUG = 0;
 my $verbose = -t;
 
@@ -92,6 +94,17 @@ while (my ($ds_name, $ds_props) = each %datasets) {
         $seen{day}{$ss_date->ymd}++;
 
         push @{$snapshots_by_type{$ds_name}{$ss_type}}, $ss_name;
+        if (!$ss_props->{$SNAPSHOT_TYPE_PROP} || $ss_props->{$SNAPSHOT_TYPE_PROP} ne $ss_type) {
+            if (my $t = $ss_props->{$SNAPSHOT_TYPE_PROP}) {
+                warn "Changing snapshot type from $t to $ss_type";
+            }
+            my @cmd = (ZFS, 'set', "$SNAPSHOT_TYPE_PROP=$ss_type", $ds_name.'@'.$ss_name);
+            print "# @cmd\n" if $verbose;
+            unless ($DEBUG) {
+                system(@cmd)
+                    and die "@cmd failed: $? $!";
+            }
+        }
     }
     @{$snapshots_by_type{$ds_name}{UNKNOWN}} = grep {!$snapshots->{$_}{snapshot_date}} keys %$snapshots;
 }
