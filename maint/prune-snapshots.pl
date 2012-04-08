@@ -105,7 +105,7 @@ while (my ($ds_name, $ds_props) = each %datasets) {
         push @{$snapshots_by_type{$ds_name}{$ss_type}}, $ss_name;
         if (!$ss_props->{$SNAPSHOT_TYPE_PROP} || $ss_props->{$SNAPSHOT_TYPE_PROP} ne $ss_type) {
             if (my $t = $ss_props->{$SNAPSHOT_TYPE_PROP}) {
-                warn "Changing snapshot type from $t to $ss_type";
+                warn "Changing snapshot type from $t to $ss_type for $ds_name\@$ss_name";
             }
             my @cmd = (ZFS, 'set', "$SNAPSHOT_TYPE_PROP=$ss_type", $ds_name.'@'.$ss_name);
             print "# @cmd\n" if $verbose;
